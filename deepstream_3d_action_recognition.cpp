@@ -401,7 +401,7 @@ int main(int argc, char *argv[])
   GstElement *pipeline = NULL, *streammux = NULL, *sink = NULL, *pgie = NULL,
              *preprocess = NULL, *queue1, *queue2, *queue3, *queue4, *queue5, *queue6, *queue7, *queue8, *queue9
              *nvvidconv = NULL, *nvosd = NULL, *tiler = NULL, *nvvidconv_postosd = NULL, 
-             *caps = NULL, *encoder = NULL, *rtppay = NULL;
+             *cap_filter = NULL, *encoder = NULL, *rtppay = NULL, *caps = NULL;
   GstElement *transform = NULL;
   GstBus *bus = NULL;
   guint bus_watch_id;
@@ -523,37 +523,19 @@ int main(int argc, char *argv[])
   /* Create OSD to draw on the converted RGBA buffer */
   nvosd = gst_element_factory_make("nvdsosd", "nv-onscreendisplay");
   
-  nvvidconv_postosd = gst_element_factory_make("nvvideoconvert", "convertor_postosd");
-  if (!nvvidconv_postosd){
-      g_printerr("Unable to create nvvidconv_postosd \n"");
-      return -1;
-  }
 
   # Create a caps filter
-  caps = gst_element_factory_make("capsfilter", "filter")
-  caps.set_property("caps", Gst.Caps.from_string("video/x-raw(memory:NVMM), format=I420"))
+  cap_filter = gst_element_factory_make("capsfilter", "filter")
+  caps = gst_caps_from_string ("video/x-raw(memory:NVMM), format=I420");
+  g_object_set (G_OBJECT (cap_filter), "caps", caps, NULL);
 
-  encoder = gst_element_factory_make("nvv4l2h264enc", "encoder")
-  if (!encoder){
-      g_printerr("Unable to create encoder \n"");
-      return -1;
-  }
+  encoder = gst_element_factory_make ("nvv4l2h264enc", "h264-encoder");
+  rtppay = gst_element_factory_make ("rtph264pay", "rtppay-h264");
+  g_object_set (G_OBJECT (encoder), "bitrate", 4000000, NULL);
+  g_object_set (G_OBJECT (encoder), "preset-level", 1, NULL);
+  g_object_set (G_OBJECT (encoder), "insert-sps-pps", 1, NULL);
+  g_object_set (G_OBJECT (encoder), "bufapi-version", 1, NULL);
 
-  encoder.set_property('bitrate', bitrate)
-  if is_aarch64():
-      encoder.set_property('preset-level', 1)
-      encoder.set_property('insert-sps-pps', 1)
-      encoder.set_property('bufapi-version', 1)
-    
-    # Make the payload-encode video into RTP packets
-  if codec == "H264":
-      rtppay = gst_element_factory_make("rtph264pay", "rtppay")
-      print("Creating H264 rtppay")
-  elif codec == "H265":
-      rtppay = gst_element_factory_make("rtph265pay", "rtppay")
-      print("Creating H265 rtppay")
-  if not rtppay:
-      sys.stderr.write(" Unable to create rtppay")
     
   # Make the UDP sink
   updsink_port_num = 5400
