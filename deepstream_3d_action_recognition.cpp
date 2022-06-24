@@ -399,10 +399,9 @@ int main(int argc, char *argv[])
 {
   GMainLoop *loop = NULL;
   GstElement *pipeline = NULL, *streammux = NULL, *sink = NULL, *pgie = NULL,
-             *preprocess = NULL, *queue1, *queue2, *queue3, *queue4, *queue5, *queue6, *queue7, *queue8, *queue9
+             *preprocess = NULL, *queue1, *queue2, *queue3, *queue4, *queue5, *queue6, *queue7, *queue8, *queue9, *queue10,
              *nvvidconv = NULL, *nvosd = NULL, *tiler = NULL, *nvvidconv_postosd = NULL, 
              *cap_filter = NULL, *encoder = NULL, *rtppay = NULL, *caps = NULL;
-  GstElement *transform = NULL;
   GstBus *bus = NULL;
   guint bus_watch_id;
   GstPad *pgie_src_pad = NULL;
@@ -511,6 +510,8 @@ int main(int argc, char *argv[])
   queue7 = gst_element_factory_make("queue", "queue7");
   queue8 = gst_element_factory_make("queue", "queue8");
   queue9 = gst_element_factory_make("queue", "queue9");
+  queue10 = gst_element_factory_make("queue", "queue10");
+
 
 
   /* Use nvtiler to composite the batched frames into a 2D tiled array based
@@ -523,6 +524,8 @@ int main(int argc, char *argv[])
   /* Create OSD to draw on the converted RGBA buffer */
   nvosd = gst_element_factory_make("nvdsosd", "nv-onscreendisplay");
   
+  nvvidconv_postosd = gst_element_factory_make("nvvideoconvert", "convertor_postosd")
+
 
   # Create a caps filter
   cap_filter = gst_element_factory_make("capsfilter", "filter")
@@ -538,35 +541,26 @@ int main(int argc, char *argv[])
 
     
   # Make the UDP sink
-  updsink_port_num = 5400
-  sink = gst_element_factory_make("udpsink", "udpsink")
-  if not sink:
-      sys.stderr.write(" Unable to create udpsink")
+  updsink_port_num = 5400;
+  sink = gst_element_factory_make("udpsink", "udpsink");
+  if (!sink){
+    g_printerr("Streammux request sink pad failed. Exiting.\n");
+  }
     
-  sink.set_property('host', '224.224.255.255')
-  sink.set_property('port', updsink_port_num)
-  sink.set_property('async', False)
-  sink.set_property('sync', 1)
+  g_object_set (G_OBJECT(sink), "host", "224.224.255.255", NULL);
+  g_object_set (G_OBJECT(sink), "port", updsink_port_num, NULL);
+  g_object_set (G_OBJECT(sink), "async", false, NULL);
+  g_object_set (G_OBJECT(sink), "sync", 1, NULL);
+
 
 
   /* Finally render the osd output */
-  if (prop.integrated)
-  {
-    transform = gst_element_factory_make("nvegltransform", "nvegl-transform");
-  }
-  sink = gst_element_factory_make("nveglglessink", "nvvideo-renderer");
-
   if (!preprocess || !pgie || !tiler || !nvvidconv || !nvosd || !sink)
   {
     g_printerr("One element could not be created. Exiting.\n");
     return -1;
   }
 
-  if (!transform && prop.integrated)
-  {
-    g_printerr("One tegra element could not be created. Exiting.\n");
-    return -1;
-  }
 
   g_object_set(G_OBJECT(streammux), "batch-size", num_sources, NULL);
 
@@ -591,41 +585,22 @@ int main(int argc, char *argv[])
   g_object_set(G_OBJECT(nvosd), "process-mode", OSD_PROCESS_MODE,
                "display-text", OSD_DISPLAY_TEXT, NULL);
 
-  g_object_set(G_OBJECT(sink), "qos", 0, "sync", gActionConfig.display_sync, NULL);
 
   /* we add a message handler */
   bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
   bus_watch_id = gst_bus_add_watch(bus, bus_call, loop);
   gst_object_unref(bus);
+  gst_bin_add_many(GST_BIN(pipeline), queue1, preprocess, queue2, pgie, queue3, tiler, queue4,
+                     nvvidconv, queue5, nvosd, queue6, nvvidconv_postosd, queue7, cap_filter, queue8, encoder,   queue9, rtppay, queue10, sink, NULL);
 
-  /* Set up the pipeline */
-  /* we add all elements into the pipeline */
-  if (prop.integrated)
+  if (!gst_element_link_many(streammux, queue1, preprocess, queue2, pgie, queue3, tiler, queue4,
+                             nvvidconv, queue5, nvosd, queue6, nvvidconv_postosd, queue7, cap_filter, queue8, encoder,   queue9, rtppay, queue10, sink, NULL))
   {
-    gst_bin_add_many(GST_BIN(pipeline), queue1, preprocess, queue2, pgie, queue3, tiler, queue4,
-                     nvvidconv, queue5, nvosd, queue6, transform, sink, NULL);
-    /* we link the elements together
-    * nvstreammux -> nvinfer -> nvtiler -> nvvidconv -> nvosd -> video-renderer */
-    if (!gst_element_link_many(streammux, queue1, preprocess, queue2, pgie, queue3, tiler, queue4,
-                               nvvidconv, queue5, nvosd, queue6, transform, sink, NULL))
-    {
-      g_printerr("Elements could not be linked. Exiting.\n");
-      return -1;
-    }
+    g_printerr("Elements could not be linked. Exiting.\n");
+    return -1;
   }
-  else
-  {
-    gst_bin_add_many(GST_BIN(pipeline), queue1, preprocess, queue2, pgie, queue3, tiler,
-                     queue4, nvvidconv, queue5, nvosd, queue6, sink, NULL);
-    /* we link the elements together
-    * nvstreammux -> nvinfer -> nvtiler -> nvvidconv -> nvosd -> video-renderer */
-    if (!gst_element_link_many(streammux, queue1, preprocess, queue2, pgie, queue3, tiler,
-                               queue4, nvvidconv, queue5, nvosd, queue6, sink, NULL))
-    {
-      g_printerr("Elements could not be linked. Exiting.\n");
-      return -1;
-    }
-  }
+
+
 
   /* Lets add probe to get informed of the meta data generated, we add probe to
    * the sink pad of the osd element, since by that time, the buffer would have
