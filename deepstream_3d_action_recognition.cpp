@@ -401,13 +401,14 @@ int main(int argc, char *argv[])
   GstElement *pipeline = NULL, *streammux = NULL, *sink = NULL, *pgie = NULL,
              *preprocess = NULL, *queue1, *queue2, *queue3, *queue4, *queue5, *queue6, *queue7, *queue8, *queue9, *queue10,
              *nvvidconv = NULL, *nvosd = NULL, *tiler = NULL, *nvvidconv_postosd = NULL, 
-             *cap_filter = NULL, *encoder = NULL, *rtppay = NULL, *caps = NULL;
+             *cap_filter = NULL, *encoder = NULL, *rtppay = NULL;
+  
   GstBus *bus = NULL;
   guint bus_watch_id;
   GstPad *pgie_src_pad = NULL;
-  guint i, num_sources;
+  guint i, num_sources, udp_sink_port_num;
   guint tiler_rows, tiler_columns;
-
+  GstCaps *caps = NULL;
   int current_device = -1;
   cudaGetDevice(&current_device);
   struct cudaDeviceProp prop;
@@ -524,11 +525,10 @@ int main(int argc, char *argv[])
   /* Create OSD to draw on the converted RGBA buffer */
   nvosd = gst_element_factory_make("nvdsosd", "nv-onscreendisplay");
   
-  nvvidconv_postosd = gst_element_factory_make("nvvideoconvert", "convertor_postosd")
+  nvvidconv_postosd = gst_element_factory_make("nvvideoconvert", "convertor_postosd");
 
 
-  # Create a caps filter
-  cap_filter = gst_element_factory_make("capsfilter", "filter")
+  cap_filter = gst_element_factory_make("capsfilter", "filter");
   caps = gst_caps_from_string ("video/x-raw(memory:NVMM), format=I420");
   g_object_set (G_OBJECT (cap_filter), "caps", caps, NULL);
 
@@ -540,15 +540,14 @@ int main(int argc, char *argv[])
   g_object_set (G_OBJECT (encoder), "bufapi-version", 1, NULL);
 
     
-  # Make the UDP sink
-  updsink_port_num = 5400;
+  udp_sink_port_num = 5400;
   sink = gst_element_factory_make("udpsink", "udpsink");
   if (!sink){
     g_printerr("Streammux request sink pad failed. Exiting.\n");
   }
     
   g_object_set (G_OBJECT(sink), "host", "224.224.255.255", NULL);
-  g_object_set (G_OBJECT(sink), "port", updsink_port_num, NULL);
+  g_object_set (G_OBJECT(sink), "port", udp_sink_port_num, NULL);
   g_object_set (G_OBJECT(sink), "async", false, NULL);
   g_object_set (G_OBJECT(sink), "sync", 1, NULL);
 
