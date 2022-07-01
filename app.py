@@ -56,7 +56,7 @@ import torchvision.transforms as T
 # define the transforms
 # This cell may need to be ran twice, ignore the first run error.
 transform = T.Compose([
-    T.Resize((112, 112)),
+    T.Resize((128, 171)),
     T.CenterCrop((112, 112)),
     T.ToTensor(),
     T.Normalize(mean = [0.4345, 0.4051, 0.3775],
@@ -88,13 +88,13 @@ def gen_frames():  # generate frame by frame from camera
                 with torch.cuda.amp.autocast():
                     input_frames = input_frames.to(device)
                     # forward pass to get the predictions
-                    outputs = model(input_frames)
-                    print(outputs.cpu().numpy().shape)
+                    outputs = model(input_frames).cpu().numpy()
+                    #print(outputs.cpu().numpy().shape)
                 # get the prediction index
-                #_, preds = torch.max(outputs.data, 1)
-                outputs = outputs.cpu().numpy()
+                preds = np.argmax(outputs, axis=1)
+                #outputs = outputs.cpu().numpy()
                 # map predictions to the respective class names
-                label = transfered_class_list[np.argmax(outputs)]
+                label = transfered_class_list[preds]
             # get the end time
             end_time = time.time()
             # get the fps
