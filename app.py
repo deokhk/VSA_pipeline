@@ -4,6 +4,7 @@ import torchvision
 import cv2
 import argparse
 import time
+import resnet
 import numpy as np
 from PIL import Image
 
@@ -38,14 +39,21 @@ for elem in CLASSES:
     idx, class_name = elem.split(" ")
     ucf101_class_list.append(class_name)
 
+ucf101_class_list.append("None")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Device is {device}")
 
 # load the model
-model = torchvision.models.video.mc3_18(pretrained=True, progress=True) #This one works.
-model.fc = torch.nn.Linear(512, 47)
-model.load_state_dict(torch.load("/nvdli-nano/data/r3d18_transfered.pth"))
+model = resnet.generate_model(model_depth=18,
+                                      n_classes=48,
+                                      n_input_channels=3,
+                                      shortcut_type="B",
+                                        conv1_t_size=7,
+                                        conv1_t_stride=1,
+                                        no_max_pool=False,
+                                        widen_factor=1.0)
+model.load_state_dict(torch.load("/nvdli-nano/data/r3d_transfered_47.pth")["state_dict"])
 # load the model onto the computation device
 model = model.eval().to(device)
 
@@ -91,7 +99,7 @@ def gen_frames():  # generate frame by frame from camera
                     # forward pass to get the predictions
                     outputs = model(input_frames)
                 # get the prediction index
-                _, preds = torch.max(outputs.data, 1)
+                _, preds = torch.max(outputs.data, 1).cpu().numpy()
 
                 # map predictions to the respective class names
                 label = ucf101_class_list[np.argmax(preds)]
