@@ -9,14 +9,13 @@ from PIL import Image
 
 app = Flask(__name__)
 
-#camera = cv2.VideoCapture('rtsp://freja.hiof.no:1935/rtplive/_definst_/hessdalen03.stream')  # use 0 for web camera
-#  for cctv camera use rtsp://username:password@ip_address:554/user=username_password='password'_channel=channel_number_stream=0.sdp' instead of camera
-# for local webcam use cv2.VideoCapture(0)
 
 from jetcam.csi_camera import CSICamera
 fps_origin = 1
 
-camera = CSICamera(width=128, height=171, capture_fps=fps_origin)
+#camera = CSICamera(width=128, height=171, , capture_fps=fps_origin)
+camera = CSICamera(width=1280, height=720, capture_width=1280, capture_height=720, capture_fps=fps_origin)
+
 names = "/nvdli-nano/data/action_recognition_kinetics.txt"
 
 parser = argparse.ArgumentParser()
@@ -79,9 +78,10 @@ def gen_frames():  # generate frame by frame from camera
                 input_frames = np.transpose(input_frames, (0, 2, 1, 3, 4))
                 # convert the frames to tensor
                 input_frames = torch.tensor(input_frames, dtype=torch.float32)
-                input_frames = input_frames.to(device)
-                # forward pass to get the predictions
-                outputs = model(input_frames)
+                with torch.cuda.amp.autocast():
+                    input_frames = input_frames.to(device)
+                    # forward pass to get the predictions
+                    outputs = model(input_frames)
                 # get the prediction index
                 _, preds = torch.max(outputs.data, 1)
 
