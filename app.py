@@ -6,6 +6,9 @@ import argparse
 import time
 import resnet
 import numpy as np
+import datetime
+import time
+import os
 from PIL import Image
 
 app = Flask(__name__)
@@ -65,6 +68,19 @@ transform = T.Compose([
                 std = [0.2768, 0.2713, 0.2737])
 ])
 
+action = ['ApplyLipstick', 'Crawling', 'BrushingTeeth', 'HeadMassage', 'HighJump', 'Punch', 'PushUps', 'WritingOnBoard']
+
+exercise_dict = {
+  "ApplyLipstick": "No",
+  "Crawling": "No",
+  "BrushingTeeth": "No",
+  "HeadMassage": "No",
+  "HighJump": "Yes",
+  "Punch": "Yes",
+  "PushUps": "Yes",
+  "WritingOnBoard": "No"
+}
+
 def gen_frames():  # generate frame by frame from camera
     processed=0
     frame_count = 0 # to count total frames
@@ -112,6 +128,9 @@ def gen_frames():  # generate frame by frame from camera
                 break
             ret, buffer = cv2.imencode('.jpg', image)
             image = buffer.tobytes()
+            ct = datetime.datetime.now()
+            command_str = "curl -XPUT -u \'admin:Admin123$\' \'https://search-visa-visa-cmn6kne72ob4eumf4k6xw52rgq.us-east-2.es.amazonaws.com/actions/_doc/" + str(ct)[-6::] + "\' -d '{\"name\": \"" + label + "\", \"date\": \"" + str(ct)[0:10] + "\", \"time_stamp\": \"" + str(ct)[0:19] + "\", \"exercise\": \"" + exercise_dict[label] + "\"}\' -H \'Content-Type: application/json\'"
+            os.system(command_str)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + image + b'\r\n')  # concat frame one by one and show result
 
