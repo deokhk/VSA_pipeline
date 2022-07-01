@@ -16,28 +16,36 @@ fps_origin = 1
 #camera = CSICamera(width=128, height=171, , capture_fps=fps_origin)
 camera = CSICamera(width=1280, height=720, capture_width=1280, capture_height=720, capture_fps=fps_origin)
 
-names = "/nvdli-nano/data/action_recognition_kinetics.txt"
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-f', '--file', required=False)
 parser.add_argument('-l', '--clip-len', dest='clip_len', default=16, type=int,
                     help='number of frames to consider for each prediction')
-parser.add_argument('-c', '--classes', default = names, help='Path to classes list.')
 
 args = vars(parser.parse_args())
 #### PRINT INFO #####
 print(f"Number of frames to consider for each prediction: {args['clip_len']}")
 
 # get the lables
-class_names = open(args["classes"]).read().strip().split("\n")
+ucf101_class_names = "/nvdli-nano/data/classInd.txt"
+
+with open(ucf101_class_names) as l:
+    CLASSES = l.read().strip().split("\n")
+
+ucf101_class_list = []
+for elem in CLASSES:
+    idx, class_name = elem.split(" ")
+    ucf101_class_list.append(class_name)
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Device is {device}")
 
 # load the model
 model = torchvision.models.video.mc3_18(pretrained=True, progress=True) #This one works.
-
+model.fc = torch.nn.Linear(512, 47)
+model.load_state_dict(torch.load("/nvdli-nano/data/r3d18_transfered.pth"))
 # load the model onto the computation device
 model = model.eval().to(device)
 
@@ -86,7 +94,7 @@ def gen_frames():  # generate frame by frame from camera
                 _, preds = torch.max(outputs.data, 1)
 
                 # map predictions to the respective class names
-                label = class_names[preds].strip()
+                label = ucf101_class_list[np.argmax(preds)]
             # get the end time
             end_time = time.time()
             # get the fps
