@@ -42,8 +42,6 @@ model = torchvision.models.video.r2plus1d_18(pretrained=True, progress=True) #Th
 # load the model onto the computation device
 model = model.eval().to(device)
 
-frame_count = 0 # to count total frames
-total_fps = 0 # to get the final frames per second
 # a clips list to append and store the individual frames
 clips = []
 frame_and_metadatas = []
@@ -61,6 +59,7 @@ transform = T.Compose([
 
 def gen_frames():  # generate frame by frame from camera
     processed=0
+    frame_count = 0 # to count total frames
     while(True):
         # capture each frame of the video
         frame = camera.read()
@@ -92,12 +91,10 @@ def gen_frames():  # generate frame by frame from camera
             end_time = time.time()
             # get the fps
             fps = 1 / (end_time - start_time)
-            # add fps to total fps
-            total_fps += fps
             # increment frame count
             frame_count += 1
             wait_time = max(1, int(fps/4))
-            label_with_time_stamp = label + f"  frame #: {frame_count}, time: {(cap.get(cv2.CAP_PROP_POS_MSEC))/1000:.2f}s"
+            label_with_time_stamp = label + f"  frame #: {frame_count}, fps: {fps}"
             cv2.putText(image, label_with_time_stamp, (15, 60),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2, 
                         lineType=cv2.LINE_AA)
