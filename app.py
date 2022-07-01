@@ -14,9 +14,9 @@ app = Flask(__name__)
 # for local webcam use cv2.VideoCapture(0)
 
 from jetcam.csi_camera import CSICamera
-fps_origin = 30
+fps_origin = 1
 
-camera = CSICamera(width=400, height=225, capture_width=1280, capture_height=720, capture_fps=fps_origin)
+camera = CSICamera(width=128, height=171, capture_fps=fps_origin)
 names = "/nvdli-nano/data/action_recognition_kinetics.txt"
 
 parser = argparse.ArgumentParser()
