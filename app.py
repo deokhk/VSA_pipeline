@@ -5,6 +5,7 @@ import cv2
 import argparse
 import time
 import numpy as np
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -53,10 +54,10 @@ import torchvision.transforms as T
 transform = T.Compose([
     T.Resize((128, 171)),
     T.CenterCrop((112, 112)),
+    T.ToTensor(),
     T.Normalize(mean = [0.43216, 0.394666, 0.37645],
-                std = [0.22803, 0.22145, 0.216989], )
+                std = [0.22803, 0.22145, 0.216989])
 ])
-
 
 def gen_frames():  # generate frame by frame from camera
     processed=0
@@ -67,7 +68,8 @@ def gen_frames():  # generate frame by frame from camera
         start_time = time.time()
         image = frame.copy()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = transform(image=frame)['image']
+        frame = Image.fromarray(frame)
+        frame = transform(frame).numpy()
         clips.append(frame)
         if len(clips) == args['clip_len']:
             with torch.no_grad(): # we do not want to backprop any gradients
@@ -75,7 +77,7 @@ def gen_frames():  # generate frame by frame from camera
                 # add an extra dimension        
                 input_frames = np.expand_dims(input_frames, axis=0)
                 # transpose to get [1, 3, num_clips, height, width]
-                input_frames = np.transpose(input_frames, (0, 4, 1, 2, 3))
+                input_frames = np.transpose(input_frames, (0, 2, 1, 3, 4))
                 # convert the frames to tensor
                 input_frames = torch.tensor(input_frames, dtype=torch.float32)
                 input_frames = input_frames.to(device)
