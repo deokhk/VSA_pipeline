@@ -99,8 +99,8 @@ def gen_frames():  # generate frame by frame from camera
                     # forward pass to get the predictions
                     outputs = model(input_frames)
                 # get the prediction index
-                _, preds = torch.max(outputs.data, 1).cpu().numpy()
-
+                _, preds = torch.max(outputs.data, 1)
+                preds = preds.cpu().numpy()
                 # map predictions to the respective class names
                 label = ucf101_class_list[np.argmax(preds)]
             # get the end time
