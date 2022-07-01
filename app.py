@@ -30,7 +30,9 @@ print(f"Number of frames to consider for each prediction: {args['clip_len']}")
 
 
 # Get the labels
-transfered_class_list = ["ApplyLipstick", "Crawling", "BrushingTeeth", "HeadMassage", "HighJump", "Punch", "PushUps", "WritingOnBoard"]
+class_names = open("trans_8.txt").read().strip().split("\n")
+
+#transfered_class_list = ["ApplyLipstick", "Crawling", "BrushingTeeth", "HeadMassage", "HighJump", "Punch", "PushUps", "WritingOnBoard"]
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Device is {device}")
@@ -88,13 +90,12 @@ def gen_frames():  # generate frame by frame from camera
                 with torch.cuda.amp.autocast():
                     input_frames = input_frames.to(device)
                     # forward pass to get the predictions
-                    outputs = model(input_frames).cpu().numpy()
-                    #print(outputs.cpu().numpy().shape)
+                    outputs = model(input_frames)
                 # get the prediction index
-                preds = np.argmax(outputs, axis=1)
-                #outputs = outputs.cpu().numpy()
+                _, preds = torch.max(outputs.data, 1)
+
                 # map predictions to the respective class names
-                label = transfered_class_list[preds]
+                label = class_names[preds].strip()
             # get the end time
             end_time = time.time()
             # get the fps
