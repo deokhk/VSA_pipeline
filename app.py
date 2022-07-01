@@ -36,7 +36,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Device is {device}")
 
 # load the model
-model = torchvision.models.video.r2plus1d_18(pretrained=True, progress=True) #This one works.
+model = torchvision.models.video.mc3_18(pretrained=True, progress=True) #This one works.
 
 # load the model onto the computation device
 model = model.eval().to(device)
