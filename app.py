@@ -28,32 +28,23 @@ args = vars(parser.parse_args())
 #### PRINT INFO #####
 print(f"Number of frames to consider for each prediction: {args['clip_len']}")
 
-# get the lables
-ucf101_class_names = "/nvdli-nano/data/classInd.txt"
 
-with open(ucf101_class_names) as l:
-    CLASSES = l.read().strip().split("\n")
-
-ucf101_class_list = []
-for elem in CLASSES:
-    idx, class_name = elem.split(" ")
-    ucf101_class_list.append(class_name)
-
-ucf101_class_list.append("None")
+# Get the labels
+transfered_class_list = ["ApplyLipstick", "Crawling", "BrushingTeeth", "HeadMassage", "HighJump", "Punch", "PushUps", "WritingOnBoard"]
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Device is {device}")
 
 # load the model
 model = resnet.generate_model(model_depth=18,
-                                      n_classes=48,
+                                      n_classes=8,
                                       n_input_channels=3,
                                       shortcut_type="B",
                                         conv1_t_size=7,
                                         conv1_t_stride=1,
                                         no_max_pool=False,
                                         widen_factor=1.0)
-model.load_state_dict(torch.load("/nvdli-nano/data/r3d_transfered_47.pth")["state_dict"])
+model.load_state_dict(torch.load("/nvdli-nano/data/r3d_transfered_8.pth")["state_dict"])
 # load the model onto the computation device
 model = model.eval().to(device)
 
@@ -65,11 +56,11 @@ import torchvision.transforms as T
 # define the transforms
 # This cell may need to be ran twice, ignore the first run error.
 transform = T.Compose([
-    T.Resize((128, 171)),
+    T.Resize((112, 112)),
     T.CenterCrop((112, 112)),
     T.ToTensor(),
-    T.Normalize(mean = [0.43216, 0.394666, 0.37645],
-                std = [0.22803, 0.22145, 0.216989])
+    T.Normalize(mean = [0.4345, 0.4051, 0.3775],
+                std = [0.2768, 0.2713, 0.2737])
 ])
 
 def gen_frames():  # generate frame by frame from camera
@@ -98,11 +89,12 @@ def gen_frames():  # generate frame by frame from camera
                     input_frames = input_frames.to(device)
                     # forward pass to get the predictions
                     outputs = model(input_frames)
+                    print(outputs.cpu().numpy().shape)
                 # get the prediction index
                 _, preds = torch.max(outputs.data, 1)
                 preds = preds.cpu().numpy()
                 # map predictions to the respective class names
-                label = ucf101_class_list[np.argmax(preds)]
+                label = transfered_class_list[np.argmax(preds)]
             # get the end time
             end_time = time.time()
             # get the fps
