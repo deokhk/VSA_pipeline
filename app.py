@@ -91,10 +91,10 @@ def gen_frames():  # generate frame by frame from camera
                     outputs = model(input_frames)
                     print(outputs.cpu().numpy().shape)
                 # get the prediction index
-                _, preds = torch.max(outputs.data, 1)
-                preds = preds.cpu().numpy()
+                #_, preds = torch.max(outputs.data, 1)
+                outputs = outputs.cpu().numpy()
                 # map predictions to the respective class names
-                label = transfered_class_list[np.argmax(preds)]
+                label = transfered_class_list[np.argmax(outputs)]
             # get the end time
             end_time = time.time()
             # get the fps
